@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project management CRUD</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div id="project-list">
+    </div>
+    <form id="creation-form">
+      <label><input name="name" type="text" />Project name</label>
+      <br />
+      <label><input name="description" type="text" />Project description</label>
+      <br />
+      <input type="submit" value="Create project"/>
+    </form>
+    <form id="update-form">
+      <label><input name="old-name" type="text" />Project name</label>
+      <label><input name="new-name" type="text" />New project name</label>
+      <br />
+      <label><input name="description" type="text" />Project description</label>
+      <br />
+      <input type="submit" value="Update existing project"/>
+    </form>
+
+    <div id="message-box"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
