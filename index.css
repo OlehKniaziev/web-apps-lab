@@ -12,13 +12,35 @@
     margin-bottom: 0.5rem;
 }
 
+.button {
+    border: 1px solid black;
+    padding: 0.2rem;
+    margin: 0.5rem;
+}
+
 .button-danger {
     background-color: crimson;
     color: whitesmoke;
     font-weight: bold;
 }
 
-.button-danger:hover {
+.button-action {
+    background-color: seagreen;
+    color: whitesmoke;
+}
+
+.button:hover {
+    cursor: pointer;
+}
+
+.section {
+    border: 2px solid;
+    margin: 1rem 0;
+    padding: 0.2rem;
+    animation: 30s infinite normal gradient;
+}
+
+.pointer:hover {
     cursor: pointer;
 }
 
@@ -28,4 +50,38 @@
 
 #message-box:not(:empty) {
     padding: 0.5rem;
+}
+
+#main-header {
+    margin-bottom: 1rem;
+}
+
+th, tr, td {
+    border: 2px solid black;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+@keyframes gradient {
+    0% {
+        border: 2px solid hsl(0deg 100% 50%);
+    }
+
+    25% {
+        border: 2px solid hsl(90deg 100% 50%);
+    }
+
+    50% {
+        border: 2px solid hsl(180deg 100% 50%);
+    }
+
+    75% {
+        border: 2px solid hsl(270deg 100% 50%);
+    }
+
+    100% {
+        border: 2px solid hsl(360deg 100% 50%);
+    }
 }

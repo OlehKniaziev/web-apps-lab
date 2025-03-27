@@ -8,25 +8,64 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div id="project-list">
-    </div>
-    <form id="creation-form">
-      <label><input name="name" type="text" />Project name</label>
-      <br />
-      <label><input name="description" type="text" />Project description</label>
-      <br />
-      <input type="submit" value="Create project"/>
-    </form>
-    <form id="update-form">
-      <label><input name="old-name" type="text" />Project name</label>
-      <label><input name="new-name" type="text" />New project name</label>
-      <br />
-      <label><input name="description" type="text" />Project description</label>
-      <br />
-      <input type="submit" value="Update existing project"/>
-    </form>
+    <header class="section" id="main-header">
+    </header>
+    <section class="section">
+      <h2>Active project</h2>
+      <div id="active-project">
+      </div>
+      <section class="section">
+        <h2>Project features</h2>
+        <div id="active-project-feature-list">
+        </div>
+      </section>
+    </section>
+    <section class="section">
+      <h2>Add feature</h2>
 
+      <form id="new-feature-form">
+        <label><input name="name" type="text" />Feature name</label>
+        <label><input name="description" type="text" />Feature description</label>
+        <br />
+
+        <label for="new-feature-priority-selection">Feature priority</label>
+        <select name="priority" id="new-feature-priority-selection">
+          <option>low</option>
+          <option>medium</option>
+          <option>high</option>
+        </select>
+        <br />
+
+        <input class="button" type="submit" value="Add new feature"/>
+      </form>
+    </section>
+    <section class="section">
+      <h2>Create project</h2>
+      <form id="creation-form">
+        <label><input name="name" type="text" />Project name</label>
+        <br />
+        <label><input name="description" type="text" />Project description</label>
+        <br />
+        <input class="button" type="submit" value="Create project"/>
+      </form>
+    </section>
+    <section class="section">
+      <h2>Update existing project</h2>
+      <form id="update-form">
+        <label><input name="old-name" type="text" />Project name</label>
+        <label><input name="new-name" type="text" />New project name</label>
+        <br />
+        <label><input name="description" type="text" />Project description</label>
+        <br />
+        <input class="button" type="submit" value="Update existing project"/>
+      </form>
+    </section>
     <div id="message-box"></div>
+    <section class="section">
+      <h2>Project list</h2>
+      <div id="project-list">
+      </div>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
