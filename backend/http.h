@@ -29,8 +29,13 @@ typedef struct {
     uz Count;
 } http_headers;
 
+#define ENUM_HTTP_VERSIONS \
+    X(1_1, "HTTP/1.1")
+
 typedef enum {
-    HTTP_1_1,
+#define X(Version, String) HTTP_##Version,
+ENUM_HTTP_VERSIONS
+#undef X
 } http_version;
 
 typedef struct {
@@ -57,16 +62,20 @@ typedef enum {
 typedef struct {
     arena *Arena;
     http_request Request;
+    string_view Content;
 } http_response_context;
 
 typedef http_response_status (*http_request_handler)(http_response_context *);
 
 typedef struct {
     // TODO(oleh): Probably introduce a thread pool and accepting socket fd here.
-    string_view *HandlerPaths;
+    arena Arena;
+    string_view *HandlersPaths;
     http_request_handler *Handlers;
     uz HandlersCount;
 } http_server;
+
+void HttpServerInit(http_server *);
 
 void HttpResponseWrite(http_response_context *, string_view);
 

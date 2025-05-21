@@ -10,7 +10,7 @@
 
 #define ASSERT(X) do {                                                  \
         if (!(X)) {                                                     \
-            fprintf(stderr, "%s:%d: ASSERTION FAILED: %s", __FILE__, __LINE__, #X); \
+            fprintf(stderr, "%s:%d: ASSERTION FAILED: %s\n", __FILE__, __LINE__, #X); \
             abort();                                                    \
         }                                                               \
     } while (0)
@@ -20,19 +20,27 @@
 #define STRUCT_ZERO(Ptr) MEMORY_ZERO((Ptr), sizeof(*(Ptr)))
 
 #define PANIC(Msg) do {                                                 \
-        fprintf(stderr, "%s:%d: PROGRAM PANICKED: %s", __FILE__, __LINE__, Msg); \
+        fprintf(stderr, "%s:%d: PROGRAM PANICKED: %s\n", __FILE__, __LINE__, Msg); \
         abort();                                                    \
     } while (0)
 
 #define PANIC_FMT(Fmt, ...) do {                                        \
-        fprintf(stderr, "%s:%d: PROGRAM PANICKED: " Fmt, __FILE__, __LINE__, __VA_ARGS__); \
+        fprintf(stderr, "%s:%d: PROGRAM PANICKED: " Fmt "\n", __FILE__, __LINE__, __VA_ARGS__); \
         abort();                                                    \
     } while (0)
 
 #define SV_FMT "%.*s"
 #define SV_ARG(Sv) (int)(Sv).Count, (const char *)(Sv).Items
+#define SV_LIT(Lit) ((string_view){.Items = (u8 *)(Lit), .Count = strlen(Lit)})
 
 #define UNREACHABLE() PANIC("Encountered unreachable code!")
+
+#define TODO_MSG(Msg) do {                                        \
+        fprintf(stderr, "%s:%d: TODO: " Msg "\n", __FILE__, __LINE__); \
+        abort();                                                  \
+    } while (0)
+
+#define TODO() TODO_MSG("NOT IMPLEMENTED")
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -82,12 +90,12 @@ static inline uz AlignForward(uz Size, uz Alignment) {
     return Size + ((Alignment - (Size & (Alignment - 1))) & (Alignment - 1));
 }
 
-static inline u8 *ArenaPush(arena *Arena, uz Size) {
+static inline void *ArenaPush(arena *Arena, uz Size) {
     Size = AlignForward(Size, sizeof(uz));
     uz AvailableBytes = Arena->Capacity - Arena->Offset;
     if (AvailableBytes < Size) PANIC_FMT("Arena out of memory for requested size %zu!", Size);
 
-    u8 *Ptr = Arena->Items + Arena->Offset;
+    void *Ptr = Arena->Items + Arena->Offset;
     Arena->Offset += Size;
     return Ptr;
 }
