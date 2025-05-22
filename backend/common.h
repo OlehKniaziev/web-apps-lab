@@ -129,4 +129,11 @@ static inline void ArenaReset(arena *Arena) {
 
 #define ARENA_NEW(Arena, Type) ((Type *)MEMORY_ZERO(ArenaPush((Arena), sizeof(Type)), sizeof(Type)))
 
+static inline char *StringViewCloneCStr(arena *Arena, string_view Sv) {
+    char *Buffer = ArenaPush(Arena, Sv.Count + 1);
+    memcpy(Buffer, Sv.Items, Sv.Count);
+    Buffer[Sv.Count] = '\0';
+    return Buffer;
+}
+
 #endif // COMMON_H_
