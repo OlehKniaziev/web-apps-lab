@@ -47,10 +47,18 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+
 typedef u8 b8;
 typedef u16 b16;
 typedef u32 b32;
 typedef u64 b64;
+
+typedef float f32;
+typedef double f64;
 
 typedef size_t uz;
 
@@ -100,6 +108,8 @@ static inline void *ArenaPush(arena *Arena, uz Size) {
     return Ptr;
 }
 
+#define ARENA_PUSH_ZERO(Arena, Size) (MEMORY_ZERO(ArenaPush((Arena), (Size)), (Size)))
+
 static inline void ArenaInit(arena *Arena, uz Capacity) {
     Arena->Capacity = Capacity;
     Arena->Offset = 0;
@@ -121,11 +131,21 @@ static inline string_view ArenaFormat(arena *Arena, const char *Fmt, ...) {
     return (string_view) {.Items = Buffer, .Count = BytesNeeded - 1};
 }
 
+static inline void *ArenaRealloc(arena *Arena, void *OldPtr, uz OldSize, uz NewSize) {
+    // TODO(oleh): Check if the last allocation's start is the Ptr, if so, just
+    // extend it.
+    void* NewPtr = ArenaPush(Arena, NewSize);
+    memcpy(NewPtr, OldPtr, OldSize);
+    return NewPtr;
+}
+
 void ArenaPop(arena *, uz);
 
 static inline void ArenaReset(arena *Arena) {
     Arena->Offset = 0;
 }
+
+arena *GetTempArena(void);
 
 #define ARENA_NEW(Arena, Type) ((Type *)MEMORY_ZERO(ArenaPush((Arena), sizeof(Type)), sizeof(Type)))
 
@@ -135,5 +155,48 @@ static inline char *StringViewCloneCStr(arena *Arena, string_view Sv) {
     Buffer[Sv.Count] = '\0';
     return Buffer;
 }
+
+b32 ReadFullFile(arena *Arena, const char *Path, string_view *OutContents);
+
+#define DEFAULT_ARRAY_CAPACITY 7
+
+#define ARRAY_INIT(Arena, Array) do {                                   \
+        (Array)->Capacity = DEFAULT_ARRAY_CAPACITY;                     \
+        (Array)->Count = 0;                                             \
+        (Array)->Items = ARENA_PUSH_ZERO((Arena), sizeof(*(Array)->Items) * DEFAULT_ARRAY_CAPACITY); \
+    } while (0)
+
+#define ARRAY_PUSH(Arena, Array, Element) do {                          \
+        if ((Array)->Count >= (Array)->Capacity) {                      \
+            uz NewCapacity = ((Array)->Capacity + 1) * 2;               \
+            (Array)->Items = ArenaRealloc((Arena), (Array)->Items, sizeof(*(Array)->Items) * (Array)->Capacity, sizeof(*(Array)->Items) * NewCapacity); \
+            (Array)->Capacity = NewCapacity;                            \
+        }                                                               \
+                                                                        \
+        (Array)->Items[(Array)->Count] = Element;                       \
+        ++(Array)->Count;                                               \
+    } while (0)
+
+u64 HashFnv1(string_view Input);
+
+typedef struct {
+    b8 HasValue;
+    string_view Value;
+} optional_string_view;
+
+typedef struct {
+    b8 HasValue;
+    f64 Value;
+} optional_f64;
+
+typedef struct {
+    b8 HasValue;
+    u64 Value;
+} optional_u64;
+
+typedef struct {
+    b8 HasValue;
+    u32 Value;
+} optional_u32;
 
 #endif // COMMON_H_

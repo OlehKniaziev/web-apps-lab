@@ -50,7 +50,9 @@ b32 HttpRequestParse(arena *Arena, string_view Buffer, http_request *Out);
 
 #define ENUM_HTTP_RESPONSE_STATUSES                             \
     X(OK, 200, "OK")                                            \
+        X(BAD_REQUEST, 400, "Bad Request")                      \
         X(NOT_FOUND, 404, "Not Found")                          \
+        X(METHOD_NOT_ALLOWED, 405, "Method Not Allowed")        \
         X(INTERNAL_SERVER_ERROR, 500, "Internal Server Error")  \
 
 typedef enum {

@@ -3,16 +3,37 @@
 
 #include "common.h"
 
-typedef struct {
-    string_view Id;
-    string_view Name;
-    string_view Description;
-} project_entity;
+#define DECLARE_PROJECT_ENTITY \
+    X(string_view, Id) \
+    X(string_view, Name) \
+    X(string_view, Description)
 
 typedef struct {
-    string_view Id;
-    string_view FirstName;
-    string_view LastName;
+#define X(Type, Name) Type Name;
+    DECLARE_PROJECT_ENTITY
+#undef X
+} project_entity;
+
+#define DECLARE_PROJECT_UPDATE_ENTITY \
+    X(string_view, Id) \
+    X(optional_string_view, Name) \
+    X(optional_string_view, Description)
+
+typedef struct {
+#define X(Type, Name) Type Name;
+    DECLARE_PROJECT_UPDATE_ENTITY
+#undef X
+} project_update_entity;
+
+#define DECLARE_USER_ENTITY \
+    X(string_view, Id) \
+    X(string_view, FirstName) \
+    X(string_view, LastName)
+
+typedef struct {
+#define X(Type, Name) Type Name;
+    DECLARE_USER_ENTITY
+#undef X
 } user_entity;
 
 typedef enum {
@@ -27,15 +48,20 @@ typedef enum {
     STATE_DONE,
 } feature_state;
 
+#define DECLARE_FEATURE_ENTITY \
+    X(string_view, Id) \
+    X(string_view, Name) \
+    X(string_view, Description) \
+    X(feature_priority, Priority) \
+    X(string_view, ProjectId) \
+    X(string_view, CreationDate) \
+    X(string_view, OwnerId) \
+    X(feature_state, State)
+
 typedef struct {
-    string_view Id;
-    string_view Name;
-    string_view Description;
-    feature_priority Priority;
-    string_view ProjectId;
-    string_view CreationDate;
-    string_view OwnerId;
-    feature_state State;
+#define X(Type, Name) Type Name;
+    DECLARE_FEATURE_ENTITY
+#undef X
 } feature_entity;
 
 void DbInit(void);

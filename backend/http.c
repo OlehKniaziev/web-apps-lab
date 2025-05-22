@@ -196,6 +196,7 @@ void HttpServerStart(http_server *Server, u16 Port) {
     while (1) {
     ServerLoopStart:
         ArenaReset(&RequestArena);
+        ResponseContext.Content = (string_view) {0};
 
         int ClientSock = accept(ServerSock, (struct sockaddr*)&ClientAddr, &ClientAddrSize);
         if (ClientSock == -1) {
