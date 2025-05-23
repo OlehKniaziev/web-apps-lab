@@ -126,6 +126,50 @@ HANDLER(GetAllProjectsHandler) {
     return HTTP_STATUS_OK;
 }
 
+HANDLER(InsertUserHandler) {
+    if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
+
+    json_value JsonPayloadValue;
+    if (!JsonParse(Context->Arena, Context->Request.Body, &JsonPayloadValue)) return HTTP_STATUS_BAD_REQUEST;
+    if (JsonPayloadValue.Type != JSON_OBJECT) return HTTP_STATUS_BAD_REQUEST;
+
+    json_object JsonPayload = JsonPayloadValue.Object;
+
+    user_entity User;
+
+#define X(Type, Field) DEFAULT_JSON_DESERIALIZER(&JsonPayload, &User, Type, Field)
+    DECLARE_USER_ENTITY
+#undef X
+
+    if (!DbInsertUser(&User)) return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+    return HTTP_STATUS_OK;
+}
+
+HANDLER(LoginUserHandler) {
+    if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
+
+    json_value JsonPayloadValue;
+    if (!JsonParse(Context->Arena, Context->Request.Body, &JsonPayloadValue)) return HTTP_STATUS_BAD_REQUEST;
+    if (JsonPayloadValue.Type != JSON_OBJECT) return HTTP_STATUS_BAD_REQUEST;
+
+    json_object JsonPayload = JsonPayloadValue.Object;
+
+    string_view FirstName, LastName, Password;
+
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("FirstName"), &FirstName)) return HTTP_STATUS_BAD_REQUEST;
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("LastName"), &LastName)) return HTTP_STATUS_BAD_REQUEST;
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("Password"), &Password)) return HTTP_STATUS_BAD_REQUEST;
+
+    user_entity User;
+    if (!DbGetUserByLogin(Context->Arena, FirstName, LastName, &User)) return HTTP_STATUS_NOT_FOUND;
+
+    if (!(StringViewEqual(User.FirstName, FirstName) &&
+          StringViewEqual(User.LastName, LastName) &&
+          StringViewEqual(User.Password, Password))) return HTTP_STATUS_BAD_REQUEST;
+
+    return HTTP_STATUS_OK;
+}
+
 int main() {
     arena *TempArena = GetTempArena();
 
@@ -167,11 +211,15 @@ int main() {
     u16 ServerPort = 5959;
 
     HttpServerAttachHandler(&Server, "/", IndexHandler);
+
     HttpServerAttachHandler(&Server, "/insert-project", InsertProjectHandler);
     HttpServerAttachHandler(&Server, "/update-project", UpdateProjectHandler);
     HttpServerAttachHandler(&Server, "/delete-project", DeleteProjectHandler);
     HttpServerAttachHandler(&Server, "/get-project", GetProjectHandler);
     HttpServerAttachHandler(&Server, "/get-all-projects", GetAllProjectsHandler);
+
+    HttpServerAttachHandler(&Server, "/insert-user", InsertUserHandler);
+    HttpServerAttachHandler(&Server, "/login-user", LoginUserHandler);
 
     printf("Starting the server on port %u\n", ServerPort);
     HttpServerStart(&Server, ServerPort);

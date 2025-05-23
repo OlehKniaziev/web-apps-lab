@@ -28,7 +28,8 @@ typedef struct {
 #define DECLARE_USER_ENTITY \
     X(string_view, Id) \
     X(string_view, FirstName) \
-    X(string_view, LastName)
+    X(string_view, LastName) \
+    X(string_view, Password)
 
 typedef struct {
 #define X(Type, Name) Type Name;
@@ -75,6 +76,7 @@ b32 DbGetAllProjects(arena *, project_entity **, uz *);
 
 b32 DbInsertUser(const user_entity *);
 b32 DbGetUserById(string_view, user_entity *);
+b32 DbGetUserByLogin(arena *Arena, string_view FirstName, string_view LastName, user_entity *User);
 b32 DbUpdateUser(user_entity * /* TODO(oleh): Additional arguments. */);
 b32 DbDeleteUser(user_entity *);
 

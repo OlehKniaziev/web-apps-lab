@@ -236,3 +236,65 @@ Cleanup:
 
     return Result;
 }
+
+b32 DbGetUserByLogin(arena *Arena, string_view FirstName, string_view LastName, user_entity *UserEntity) {
+    arena *TempArena = GetTempArena();
+
+    b32 Result;
+
+    const char *FirstNameBson = BsonEncode_string_view(TempArena, FirstName);
+    const char *LastNameBson = BsonEncode_string_view(TempArena, LastName);
+    bson_t *Query = BCON_NEW("FirstName", FirstNameBson, "LastName", LastNameBson);
+    bson_t *QueryOptions = BCON_NEW("limit", BCON_INT32(1));
+
+    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(MongoUsersCollection, Query, QueryOptions, NULL);
+
+    const bson_t *UserDoc;
+    if (!mongoc_cursor_next(ResultsCursor, &UserDoc)) {
+        Result = 0;
+        goto Cleanup;
+    }
+
+    bson_iter_t DocIterator;
+    if (!bson_iter_init(&DocIterator, UserDoc)) {
+        Result = 0;
+        goto Cleanup;
+    }
+
+#define X(Type, Field)                                                  \
+    if (!bson_iter_find(&DocIterator, #Field)) {                        \
+    Result = 0;                                                     \
+    goto Cleanup;                                                   \
+    }                                                                   \
+    if (!BsonIterGet_##Type(&DocIterator, Arena, &UserEntity->Field)) { \
+    Result = 0;                                                     \
+    goto Cleanup;                                                   \
+    }
+
+DECLARE_USER_ENTITY
+#undef X
+
+Result = 1;
+
+Cleanup:
+    bson_destroy(Query);
+    bson_destroy(QueryOptions);
+    mongoc_cursor_destroy(ResultsCursor);
+
+    return Result;
+}
+
+b32 DbInsertUser(const user_entity *UserEntity) {
+    arena *TempArena = GetTempArena();
+
+    // Id, Name, Description
+#define X(Type, Name) #Name, BsonEncode_##Type(TempArena, UserEntity->Name),
+bson_t *Document = bcon_new(NULL,
+                            DECLARE_USER_ENTITY
+                            NULL);
+#undef X
+
+    b32 Result = mongoc_collection_insert_one(MongoUsersCollection, Document, NULL, NULL, NULL);
+    bson_destroy(Document);
+    return Result;
+}
