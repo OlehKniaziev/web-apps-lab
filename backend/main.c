@@ -48,7 +48,7 @@ DECLARE_PROJECT_UPDATE_ENTITY
 #undef X
 
     project_entity ExistingProject;
-    if (!DbGetProjectById(Update.Id, &ExistingProject)) return HTTP_STATUS_NOT_FOUND;
+    if (!DbGetProjectById(Context->Arena, Update.Id, &ExistingProject)) return HTTP_STATUS_NOT_FOUND;
 
     if (Update.Name.HasValue) {
         ExistingProject.Name = Update.Name.Value;

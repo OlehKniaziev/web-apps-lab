@@ -55,6 +55,8 @@ b32 DbInsertProject(const project_entity *ProjectEntity) {
     const char *BsonName = BCON_SV(TempArena, ProjectEntity->Name);
     const char *BsonDescription = BCON_SV(TempArena, ProjectEntity->Description);
 
+    // !!!
+    FIXME();
     bson_t *Document = BCON_NEW("id", BsonId,
                                 "name", BsonName,
                                 "description", BsonDescription);
@@ -64,13 +66,26 @@ b32 DbInsertProject(const project_entity *ProjectEntity) {
     return Result;
 }
 
-b32 DbGetProjectById(string_view Id, project_entity *ProjectEntity) {
+static inline b32 BsonIterGet_string_view(bson_iter_t *Iterator, arena *Arena, string_view *Out) {
+    u32 Length = 0;
+    const char *CStr = bson_iter_utf8(Iterator, &Length);
+    if (CStr == NULL) return 0;
+
+    Out->Items = ArenaPush(Arena, Length);
+    Out->Count = Length;
+    memcpy(Out->Items, CStr, Length);
+    return 1;
+}
+
+b32 DbGetProjectById(arena *Arena, string_view Id, project_entity *ProjectEntity) {
+    arena *TempArena = GetTempArena();
+
     b32 Result;
 
-    bson_t *Query = bson_new();
-    bson_t *QueryOptions = BCON_NEW("limit", BCON_INT32(1));
+    const char *IdBson = BCON_SV(TempArena, Id);\
+    bson_t *Query = BCON_NEW("id", IdBson);
 
-    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(ProjectCollection, Query, QueryOptions, NULL);
+    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(MongoProjectsCollection, Query, NULL, NULL);
 
     const bson_t *ProjectDoc;
     if (!mongoc_cursor_next(ResultsCursor, &ProjectDoc)) {
@@ -78,7 +93,31 @@ b32 DbGetProjectById(string_view Id, project_entity *ProjectEntity) {
         goto Cleanup;
     }
 
-    ProjectEntity->
+    bson_iter_t DocIterator;
+    if (!bson_iter_init(&DocIterator, ProjectDoc)) {
+        Result = 0;
+        goto Cleanup;
+    }
+
+#define X(Type, Field)                                                  \
+    if (!bson_iter_find(&DocIterator, #Field)) {                        \
+        Result = 0;                                                     \
+        goto Cleanup;                                                   \
+    }                                                                   \
+    if (!BsonIterGet_##Type(&DocIterator, Arena, &ProjectEntity->Field)) { \
+        Result = 0;                                                     \
+        goto Cleanup;                                                   \
+    }
+
+    DECLARE_PROJECT_ENTITY
+#undef X
+
+    Result = 1;
 
 Cleanup:
+    bson_destroy(Query);
+    /* bson_destroy(QueryOptions); */
+    mongoc_cursor_destroy(ResultsCursor);
+
+    return Result;
 }
