@@ -408,3 +408,15 @@ void JsonPutString(string_view String) {
     CurrentJsonState = STATE_DIRTY;
     CurrentJsonArena->Offset += BytesRequired;
 }
+
+void JsonPrepareArrayElement(void) {
+    if (CurrentJsonState == STATE_DIRTY) {
+        const uz BytesRequired = 1;
+
+        ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= BytesRequired);
+
+        u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+        *Ptr = ',';
+        CurrentJsonArena->Offset += BytesRequired;
+    }
+}

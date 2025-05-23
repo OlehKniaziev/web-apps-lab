@@ -71,6 +71,8 @@ void JsonEndObject(void);
 void JsonBeginArray(void);
 void JsonEndArray(void);
 
+void JsonPrepareArrayElement(void);
+
 void JsonPutNumber(f64);
 void JsonPutString(string_view);
 

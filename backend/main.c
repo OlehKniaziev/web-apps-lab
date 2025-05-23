@@ -91,6 +91,41 @@ HANDLER(GetProjectHandler) {
     return HTTP_STATUS_OK;
 }
 
+HANDLER(GetAllProjectsHandler) {
+    if (Context->Request.Method != HTTP_GET) return HTTP_STATUS_METHOD_NOT_ALLOWED;
+
+    project_entity *Projects;
+    uz ProjectsCount;
+
+    if (!DbGetAllProjects(Context->Arena, &Projects, &ProjectsCount)) return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+
+    JsonBegin(Context->Arena);
+    JsonBeginArray();
+
+    for (uz ProjectIndex = 0; ProjectIndex < ProjectsCount; ++ProjectIndex) {
+        project_entity Project = Projects[ProjectIndex];
+
+        JsonPrepareArrayElement();
+
+        JsonBeginObject();
+
+#define X(Type, Field)                          \
+        JsonPutKey(SV_LIT(#Field));             \
+        JsonPut_##Type(Project.Field);
+
+        DECLARE_PROJECT_ENTITY
+#undef X
+
+        JsonEndObject();
+    }
+
+    JsonEndArray();
+
+    string_view ProjectJson = JsonEnd();
+    Context->Content = ProjectJson;
+    return HTTP_STATUS_OK;
+}
+
 int main() {
     arena *TempArena = GetTempArena();
 
@@ -136,6 +171,7 @@ int main() {
     HttpServerAttachHandler(&Server, "/update-project", UpdateProjectHandler);
     HttpServerAttachHandler(&Server, "/delete-project", DeleteProjectHandler);
     HttpServerAttachHandler(&Server, "/get-project", GetProjectHandler);
+    HttpServerAttachHandler(&Server, "/get-all-projects", GetAllProjectsHandler);
 
     printf("Starting the server on port %u\n", ServerPort);
     HttpServerStart(&Server, ServerPort);

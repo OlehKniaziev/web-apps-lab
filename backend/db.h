@@ -67,9 +67,11 @@ typedef struct {
 void DbInit(void);
 
 b32 DbInsertProject(const project_entity *);
-b32 DbGetProjectById(arena *Arena, string_view, project_entity *);
+b32 DbGetProjectById(arena *, string_view, project_entity *);
 b32 DbUpdateProject(const project_update_entity *);
 b32 DbDeleteProjectById(string_view);
+
+b32 DbGetAllProjects(arena *, project_entity **, uz *);
 
 b32 DbInsertUser(const user_entity *);
 b32 DbGetUserById(string_view, user_entity *);

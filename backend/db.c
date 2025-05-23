@@ -179,3 +179,60 @@ b32 DbDeleteProjectById(string_view ProjectId) {
 
     return Result;
 }
+
+b32 DbGetAllProjects(arena *Arena, project_entity **Projects, uz *ProjectsCount) {
+    uz StartOffset = Arena->Offset;
+
+    b32 Result = 1;
+
+    bson_t Query;
+    bson_init(&Query);
+
+    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(MongoProjectsCollection, &Query, NULL, NULL);
+
+    struct {
+        project_entity *Items;
+        uz Count;
+        uz Capacity;
+    } ProjectsArray;
+    ARRAY_INIT(Arena, &ProjectsArray);
+
+    const bson_t *ProjectDoc;
+    while (mongoc_cursor_next(ResultsCursor, &ProjectDoc)) {
+        bson_iter_t DocIterator;
+        if (!bson_iter_init(&DocIterator, ProjectDoc)) {
+            Result = 0;
+            goto Cleanup;
+        }
+
+        project_entity ProjectEntity;
+
+#define X(Type, Field)                                                  \
+        if (!bson_iter_find(&DocIterator, #Field)) {                    \
+            Result = 0;                                                 \
+            goto Cleanup;                                               \
+        }                                                               \
+        if (!BsonIterGet_##Type(&DocIterator, Arena, &ProjectEntity.Field)) { \
+            Result = 0;                                                 \
+            goto Cleanup;                                               \
+        }
+
+        DECLARE_PROJECT_ENTITY
+#undef X
+
+       ARRAY_PUSH(Arena, &ProjectsArray, ProjectEntity);
+    }
+
+Cleanup:
+    bson_destroy(&Query);
+    mongoc_cursor_destroy(ResultsCursor);
+
+    if (Result == 0) {
+        Arena->Offset = StartOffset;
+    } else {
+        *ProjectsCount = ProjectsArray.Count;
+        *Projects = ProjectsArray.Items;
+    }
+
+    return Result;
+}
