@@ -246,10 +246,10 @@ function updateActiveProjectViewHook(proj: Project): void {
 }
 
 function updateMainHeaderHook(newUser: User): void {
-    mainHeader.textContent = `Currently logged in as ${newUser.firstName} ${newUser.lastName}.`;
+    mainHeader.textContent = `Currently logged in as ${newUser.FirstName} ${newUser.LastName}.`;
 }
 
-function showPopup(...children: HTMLElement[]): void {
+function showPopup(...children: HTMLElement[]): HTMLElement {
     const target = document.body;
 
     const dialog = document.createElement("dialog");
@@ -269,6 +269,8 @@ function showPopup(...children: HTMLElement[]): void {
     target.appendChild(dialog);
 
     dialog.showModal();
+
+    return closeButton
 }
 
 async function displayFeatureDetails(feat: Feature): Promise<void> {
@@ -314,11 +316,11 @@ async function displayFeatureDetails(feat: Feature): Promise<void> {
     const pProject = document.createElement("p");
     pProject.textContent = `projectID: ${feat.projectID}(${project.Name})`;
 
-    const owner = globalUserRepository.queryByID(feat.ownerID);
+    const owner = await globalUserRepository.queryByID(feat.ownerID);
     if (!owner) throw new Error(`No user with id ${feat.ownerID}`);
 
     const pOwner = document.createElement("p");
-    pOwner.textContent = `ownerID: ${feat.ownerID}(${owner.firstName} ${owner.lastName})`;
+    pOwner.textContent = `ownerID: ${feat.ownerID}(${owner.FirstName} ${owner.LastName})`;
 
     const stateSelect = document.createElement("select");
 
@@ -452,3 +454,47 @@ export function setupEventListeners() {
         }
     }
 }
+
+function showLoginFormPopup() {
+    const loginForm = document.createElement("form");
+
+    const f = (name: string, desc: string) => {
+        const input = document.createElement("input");
+        input.name = name;
+        input.placeholder = desc;
+        loginForm.appendChild(input);
+    };
+
+    f("first-name", "First name");
+    f("second-name", "Second name");
+    f("password", "Password");
+
+    const submitButton = document.createElement("button");
+    submitButton.textContent = "Login";
+
+    const closeButton = showPopup(loginForm);
+
+    submitButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+
+        const firstName = getFormInputValue(loginForm, "first-name");
+        const secondName = getFormInputValue(loginForm, "second-name");
+        const password = getFormInputValue(loginForm, "password");
+        const success = await globalUserRepository.loginUser(firstName, secondName, password);
+        if (success) closeButton.click();
+        else {
+            const messageP = document.createElement("p");
+            messageP.classList.add("message-level-error");
+            messageP.textContent = "Invalid credentials.";
+            showPopup(messageP);
+        }
+    });
+
+    closeButton.style.display = "none";
+
+    const breakElem = document.createElement("br");
+
+    loginForm.append(breakElem, submitButton);
+}
+
+showLoginFormPopup();

@@ -128,9 +128,9 @@ class LocalStorageProjectRepository implements ProjectRepository {
 }
 
 export type User = Readonly<{
-    id: string;
-    firstName: string;
-    lastName: string;
+    Id: string;
+    FirstName: string;
+    LastName: string;
 }>;
 
 export type UserEventSelector = {
@@ -140,90 +140,33 @@ export type UserEventSelector = {
 export type UserEventHook = (user: User) => void;
 
 interface UserRepository {
-    queryByID(id: string): User | null;
+    queryByID(id: string): Promise<User | null>;
     getActive(): User;
     setActiveUser(user: User): void;
     attachEventHook(selector: UserEventSelector, hook: UserEventHook): void;
-}
-
-type UserRepositoryMutator = {
-    setActiveUser(user: User): void;
-    addUser(user: User): void;
-};
-
-class UserRepositoryState {
-    private users: User[] = [];
-    private activeUser: User;
-
-    constructor() {
-        const existingState = localStorage.getItem(UserRepositoryState.LOCAL_STORAGE_KEY);
-
-        if (!existingState) {
-            this.activeUser = adminUser;
-            this.users.push(this.activeUser);
-
-            const thisString = JSON.stringify(this);
-            localStorage.setItem(UserRepositoryState.LOCAL_STORAGE_KEY, thisString);
-        } else {
-            const state = JSON.parse(existingState) as UserRepositoryState;
-
-            this.activeUser = state.activeUser;
-            this.users = state.users;
-        }
-    }
-
-    public modify(cb: (mutator: UserRepositoryMutator) => void): void {
-        const repositoryState = this;
-
-        const mutator: UserRepositoryMutator = {
-            setActiveUser(user: User): void {
-                repositoryState.activeUser = user;
-            },
-
-            addUser(user: User): void {
-                repositoryState.users.push(user);
-            },
-        };
-
-        cb(mutator);
-
-        const stateJSONString = JSON.stringify(this);
-        localStorage.setItem(UserRepositoryState.LOCAL_STORAGE_KEY, stateJSONString);
-    }
-
-    public queryByID(id: string): User | null {
-        for (const user of this.users) {
-            if (user.id === id) return user;
-        }
-
-        return null;
-    }
-
-    public getActive(): User {
-        return this.activeUser;
-    }
-
-    private static LOCAL_STORAGE_KEY: string = "user-repository";
+    loginUser(firstName: string, lastName: string, password: string): Promise<boolean>;
 }
 
 class LocalStorageUserRepository implements UserRepository {
-    private state: UserRepositoryState;
     private activeUserChangedHooks: UserEventHook[] = [];
-
-    constructor() {
-        this.state = new UserRepositoryState();
-    }
+    private activeUser?: User;
 
     public getActive(): User {
-        return this.state.getActive();
+        if (this.activeUser === undefined) throw new Error("No active user");
+        return this.activeUser;
     }
 
-    public queryByID(id: string) {
-        return this.state.queryByID(id);
+    public async queryByID(id: string) {
+        const res = await fetch(`${BACKEND_URL}/get-user`, {
+            method: "POST",
+            body: id,
+        });
+        const json = await res.json();
+        return json as User;
     }
 
     public setActiveUser(user: User): void {
-        this.state.modify((mutator) => mutator.setActiveUser(user));
+        this.activeUser = user;
 
         for (const hook of this.activeUserChangedHooks) {
             hook(user);
@@ -236,6 +179,14 @@ class LocalStorageUserRepository implements UserRepository {
                 this.activeUserChangedHooks.push(hook);
                 break;
         }
+    }
+
+    public async loginUser(firstName: string, lastName: string, password: string): Promise<boolean> {
+        const res = await fetch(`${BACKEND_URL}/login-user`, {
+            method: "POST",
+            body: `{"FirstName": "${firstName}", "LastName": "${lastName}", "Password": "${password}"}`
+        });
+        return res.ok;
     }
 }
 
@@ -273,7 +224,7 @@ export function createNewFeatureRightNow(
 
     return {
         id: crypto.randomUUID(),
-        ownerID: owner.id,
+        ownerID: owner.Id,
         projectID: project.Id,
         state: "todo",
         name,
@@ -348,12 +299,6 @@ class LocalStorageFeatureRepository implements FeatureRepository {
     public updateFeature(feature: Feature): void {
         this.state.modify((mutator) => mutator.updateFeature(feature));
     }
-};
-
-const adminUser: User = {
-    id: "admin-id",
-    firstName: "admin",
-    lastName: "adminenko",
 };
 
 const globalProjectRepository: ProjectRepository = new LocalStorageProjectRepository();
