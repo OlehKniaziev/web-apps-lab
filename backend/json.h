@@ -82,4 +82,8 @@ void JsonPutKey(string_view);
 
 string_view JsonEnd(void);
 
+// Aliases for entity-type serializers.
+
+#define JsonPut_string_view JsonPutString
+
 #endif // JSON_H_

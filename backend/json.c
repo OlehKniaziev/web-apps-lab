@@ -316,7 +316,6 @@ b32 JsonObjectGet_string_view(const json_object *Object, string_view Key, string
 
 static arena *CurrentJsonArena;
 static uz CurrentJsonStart;
-static uz CurrentJsonCount;
 
 enum {
     STATE_CLEAN,
@@ -330,8 +329,8 @@ void JsonBegin(arena *Arena) {
 }
 
 string_view JsonEnd(void) {
-    string_view Result = {.Items = CurrentJsonArena->Items + CurrentJsonStart, .Count = CurrentJsonCount};
-    CurrentJsonCount = 0;
+    uz JsonCount = CurrentJsonArena->Offset - CurrentJsonStart;
+    string_view Result = {.Items = CurrentJsonArena->Items + CurrentJsonStart, .Count = JsonCount};
     CurrentJsonArena->Offset = AlignForward(CurrentJsonArena->Offset, sizeof(uz));
     return Result;
 }
