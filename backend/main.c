@@ -47,17 +47,7 @@ HANDLER(UpdateProjectHandler) {
 DECLARE_PROJECT_UPDATE_ENTITY
 #undef X
 
-    project_entity ExistingProject;
-    if (!DbGetProjectById(Context->Arena, Update.Id, &ExistingProject)) return HTTP_STATUS_NOT_FOUND;
-
-    if (Update.Name.HasValue) {
-        ExistingProject.Name = Update.Name.Value;
-    }
-    if (Update.Description.HasValue) {
-        ExistingProject.Description = Update.Description.Value;
-    }
-
-    if (!DbInsertProject(&ExistingProject)) return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+    if (!DbUpdateProject(&Update)) return HTTP_STATUS_INTERNAL_SERVER_ERROR;
 
     return HTTP_STATUS_OK;
 }

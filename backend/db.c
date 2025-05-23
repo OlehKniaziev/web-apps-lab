@@ -45,21 +45,20 @@ void DbInit(void) {
     MongoFeaturesCollection = mongoc_database_get_collection(MongoDatabase, MONGO_FEATURES_COLLECTION);
 }
 
-#define BCON_SV(Arena, Sv) (BCON_UTF8(StringViewCloneCStr((Arena), (Sv))))
+static const char *BsonEncode_string_view(arena *Arena, string_view Sv) {
+    const char *CStr = StringViewCloneCStr(Arena, Sv);
+    return (BCON_UTF8(CStr));
+}
 
 b32 DbInsertProject(const project_entity *ProjectEntity) {
     arena *TempArena = GetTempArena();
 
     // Id, Name, Description
-    const char *BsonId = BCON_SV(TempArena, ProjectEntity->Id);
-    const char *BsonName = BCON_SV(TempArena, ProjectEntity->Name);
-    const char *BsonDescription = BCON_SV(TempArena, ProjectEntity->Description);
-
-    // !!!
-    FIXME();
-    bson_t *Document = BCON_NEW("id", BsonId,
-                                "name", BsonName,
-                                "description", BsonDescription);
+#define X(Type, Name) #Name, BsonEncode_##Type(TempArena, ProjectEntity->Name),
+bson_t *Document = bcon_new(NULL,
+                            DECLARE_PROJECT_ENTITY
+                            NULL);
+#undef X
 
     b32 Result = mongoc_collection_insert_one(MongoProjectsCollection, Document, NULL, NULL, NULL);
     bson_destroy(Document);
@@ -82,10 +81,11 @@ b32 DbGetProjectById(arena *Arena, string_view Id, project_entity *ProjectEntity
 
     b32 Result;
 
-    const char *IdBson = BCON_SV(TempArena, Id);\
-    bson_t *Query = BCON_NEW("id", IdBson);
+    const char *IdBson = BsonEncode_string_view(TempArena, Id);
+    bson_t *Query = BCON_NEW("Id", IdBson);
+    bson_t *QueryOptions = BCON_NEW("limit", BCON_INT32(1));
 
-    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(MongoProjectsCollection, Query, NULL, NULL);
+    mongoc_cursor_t *ResultsCursor = mongoc_collection_find_with_opts(MongoProjectsCollection, Query, QueryOptions, NULL);
 
     const bson_t *ProjectDoc;
     if (!mongoc_cursor_next(ResultsCursor, &ProjectDoc)) {
@@ -116,8 +116,47 @@ b32 DbGetProjectById(arena *Arena, string_view Id, project_entity *ProjectEntity
 
 Cleanup:
     bson_destroy(Query);
-    /* bson_destroy(QueryOptions); */
+    bson_destroy(QueryOptions);
     mongoc_cursor_destroy(ResultsCursor);
+
+    return Result;
+}
+
+b32 DbUpdateProject(const project_update_entity *ProjectUpdate) {
+    ASSERT(ProjectUpdate->Name.HasValue || ProjectUpdate->Description.HasValue);
+
+    b32 Result;
+
+    arena *TempArena = GetTempArena();
+
+    const char *UpdateId = BsonEncode_string_view(TempArena, ProjectUpdate->Id);
+    bson_t *Query = BCON_NEW("Id", UpdateId);
+    bson_t *Update;
+
+    // FIXME(oleh): This is so ugly because for whatever reason i get an assertion
+    // error inside the Mongo driver when calling `bcon_append` :/.
+    if (ProjectUpdate->Name.HasValue) {
+        const char *UpdateName = BsonEncode_string_view(TempArena, ProjectUpdate->Name.Value);
+
+        if (ProjectUpdate->Description.HasValue) {
+            const char *UpdateDescription = BsonEncode_string_view(TempArena, ProjectUpdate->Description.Value);
+            Update = BCON_NEW("$set", "{", "Name", UpdateName, "Description", UpdateDescription, "}");
+        } else {
+            Update = BCON_NEW("$set", "{", "Name", UpdateName, "}");
+        }
+    } else {
+        const char *UpdateDescription = BsonEncode_string_view(TempArena, ProjectUpdate->Description.Value);
+        Update = BCON_NEW("$set", "{", "Description", UpdateDescription, "}");
+    }
+
+    if (!mongoc_collection_update_one(MongoProjectsCollection, Query, Update, NULL, NULL, NULL)) {
+        Result = 0;
+    } else {
+        Result = 1;
+    }
+
+    bson_destroy(Query);
+    bson_destroy(Update);
 
     return Result;
 }
