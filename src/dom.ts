@@ -11,6 +11,19 @@ type DynamicElement = {
     listeners: NamedEventListener[];
 };
 
+let authFirstNameInput: HTMLInputElement | null = null;
+let authLastNameInput: HTMLInputElement | null = null;
+
+export function authGetFirstNameInput(): HTMLInputElement {
+    if (authFirstNameInput === null) throw new Error("Input is null");
+    return authFirstNameInput;
+}
+
+export function authGetLastNameInput(): HTMLInputElement {
+    if (authLastNameInput === null) throw new Error("Input is null");
+    return authLastNameInput;
+}
+
 const mainHeader = querySelectorMust("#main-header");
 
 const messageBox = querySelectorMust("#message-box");
@@ -55,8 +68,8 @@ const dynamicElements: DynamicElement[] = [
     }
 ];
 
-function querySelectorMust(selector: string): Element {
-    const el = document.querySelector(selector);
+function querySelectorMust<T extends Element = Element>(selector: string): T {
+    const el = document.querySelector<T>(selector);
     if (!el) {
         throw new Error(`Could not find an element conforming to selector '${selector}'`);
     }
@@ -480,15 +493,19 @@ function showLoginFormPopup() {
     const f = (name: string, desc: string) => {
         const input = document.createElement("input");
         input.name = name;
+        input.id = name;
         input.placeholder = desc;
         loginForm.appendChild(input);
     };
 
     f("first-name", "First name");
-    f("second-name", "Second name");
+    f("last-name", "Last name");
     f("password", "Password");
 
-    const googleLoginTemplate = querySelectorMust("#google-login");
+    authFirstNameInput = loginForm.querySelector("#first-name");
+    authLastNameInput = loginForm.querySelector("#last-name");
+
+    const googleLoginTemplate = querySelectorMust<HTMLTemplateElement>("#google-login");
     const googleLogin = googleLoginTemplate.content.querySelectorAll("div");
 
     const submitButton = document.createElement("button");
@@ -500,9 +517,9 @@ function showLoginFormPopup() {
         e.preventDefault();
 
         const firstName = getFormInputValue(loginForm, "first-name");
-        const secondName = getFormInputValue(loginForm, "second-name");
+        const lastName = getFormInputValue(loginForm, "last-name");
         const password = getFormInputValue(loginForm, "password");
-        const success = await globalUserRepository.loginUser(firstName, secondName, password);
+        const success = await globalUserRepository.loginUser(firstName, lastName, password);
         if (success) {
             initState();
             closeButton.click();
