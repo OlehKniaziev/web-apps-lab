@@ -52,6 +52,20 @@ DECLARE_PROJECT_UPDATE_ENTITY
     return HTTP_STATUS_OK;
 }
 
+HANDLER(DeleteProjectHandler) {
+    if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
+
+    string_view ProjectId = Context->Request.Body;
+    if (ProjectId.Count == 0) return HTTP_STATUS_BAD_REQUEST;
+
+    // FIXME(oleh): The status returned here depends on the type of error
+    // that happened inside the delete subroutine, it might be correct to return
+    // 500 instead.
+    if (!DbDeleteProjectById(ProjectId)) return HTTP_STATUS_NOT_FOUND;
+
+    return HTTP_STATUS_OK;
+}
+
 int main() {
     arena *TempArena = GetTempArena();
 
@@ -95,6 +109,7 @@ int main() {
     HttpServerAttachHandler(&Server, "/", IndexHandler);
     HttpServerAttachHandler(&Server, "/insert-project", InsertProjectHandler);
     HttpServerAttachHandler(&Server, "/update-project", UpdateProjectHandler);
+    HttpServerAttachHandler(&Server, "/delete-project", DeleteProjectHandler);
 
     printf("Starting the server on port %u\n", ServerPort);
     HttpServerStart(&Server, ServerPort);

@@ -160,3 +160,22 @@ b32 DbUpdateProject(const project_update_entity *ProjectUpdate) {
 
     return Result;
 }
+
+b32 DbDeleteProjectById(string_view ProjectId) {
+    b32 Result;
+
+    arena *TempArena = GetTempArena();
+
+    const char *DeleteId = BsonEncode_string_view(TempArena, ProjectId);
+    bson_t *Query = BCON_NEW("Id", DeleteId);
+
+    if (!mongoc_collection_delete_one(MongoProjectsCollection, Query, NULL, NULL, NULL)) {
+        Result = 0;
+    } else {
+        Result = 1;
+    }
+
+    bson_destroy(Query);
+
+    return Result;
+}
