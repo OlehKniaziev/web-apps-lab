@@ -93,14 +93,14 @@ function creationFormOnSubmit(ev: Event) {
 
     try {
         const proj = globalProjectRepository.createWithRandomID(projectName, projectDescription);
-        displayMessage(`Successfully created a project with id '${proj.id}'`);
+        displayMessage(`Successfully created a project with id '${proj.Id}'`);
     } catch (e) {
         const error = e as Error;
         displayMessage(error.message, "error");
     }
 }
 
-function updateFormOnSubmit(ev: Event) {
+async function updateFormOnSubmit(ev: Event) {
     const event = ev as SubmitEvent;
 
     event.preventDefault();
@@ -114,14 +114,19 @@ function updateFormOnSubmit(ev: Event) {
     const newProjectName = getFormInputValue(form, "new-name");
     const projectDescription = getFormInputValue(form, "description");
 
+    const project = await globalProjectRepository.queryByName(oldProjectName);
+    if (!project) {
+        throw new Error("No such project");
+    }
+
     const updateParams: ProjectUpdateParams = {
-        oldName: oldProjectName,
-        newName: newProjectName,
-        description: projectDescription,
+        Id: project.Id,
+        Name: newProjectName,
+        Description: projectDescription,
     };
 
-    if (newProjectName === "")     delete updateParams.newName;
-    if (projectDescription === "") delete updateParams.description;
+    if (newProjectName === "")     delete updateParams.Name;
+    if (projectDescription === "") delete updateParams.Description;
 
     globalProjectRepository.update(updateParams);
 }
@@ -175,16 +180,16 @@ function projectToElem(proj: Project): HTMLElement {
     const nameP = document.createElement("p");
     const descriptionP = document.createElement("p");
 
-    idP.textContent = proj.id;
-    nameP.textContent = proj.name;
-    descriptionP.textContent = proj.description;
+    idP.textContent = proj.Id;
+    nameP.textContent = proj.Name;
+    descriptionP.textContent = proj.Description;
 
     const removeButton = document.createElement("button");
     removeButton.classList.add("button", "button-danger");
 
     removeButton.textContent = "Remove";
 
-    removeButton.addEventListener("click", () => globalProjectRepository.deleteByName(proj.name));
+    removeButton.addEventListener("click", () => globalProjectRepository.deleteByName(proj.Name));
 
     const setCurrentButton = document.createElement("button");
     setCurrentButton.classList.add("button", "button-action");
@@ -193,7 +198,7 @@ function projectToElem(proj: Project): HTMLElement {
 
     setCurrentButton.addEventListener("click", () => globalProjectRepository.setActive(proj));
 
-    if (proj.id === globalProjectRepository.getActive()?.id) {
+    if (proj.Id === globalProjectRepository.getActive()?.Id) {
         const activeText = document.createElement("b");
         activeText.textContent = "[ACTIVE]";
         mainDiv.appendChild(activeText);
@@ -228,9 +233,9 @@ function updateActiveProjectViewHook(proj: Project): void {
     const nameCell = document.createElement("td");
     const descrCell = document.createElement("td");
 
-    idCell.textContent = proj.id;
-    nameCell.textContent = proj.name;
-    descrCell.textContent = proj.description;
+    idCell.textContent = proj.Id;
+    nameCell.textContent = proj.Name;
+    descrCell.textContent = proj.Description;
 
     bodyRow.append(idCell, nameCell, descrCell);
     tBody.appendChild(bodyRow);
@@ -266,7 +271,7 @@ function showPopup(...children: HTMLElement[]): void {
     dialog.showModal();
 }
 
-function displayFeatureDetails(feat: Feature): void {
+async function displayFeatureDetails(feat: Feature): Promise<void> {
     const featureElem = document.createElement("div");
 
     const title = document.createElement("h1");
@@ -303,11 +308,11 @@ function displayFeatureDetails(feat: Feature): void {
         globalFeatureRepository.updateFeature(feat);
     });
 
-    const project = globalProjectRepository.queryByID(feat.projectID);
+    const project = await globalProjectRepository.queryByID(feat.projectID);
     if (!project) throw new Error(`No project with id ${feat.projectID}`);
 
     const pProject = document.createElement("p");
-    pProject.textContent = `projectID: ${feat.projectID}(${project.name})`;
+    pProject.textContent = `projectID: ${feat.projectID}(${project.Name})`;
 
     const owner = globalUserRepository.queryByID(feat.ownerID);
     if (!owner) throw new Error(`No user with id ${feat.ownerID}`);
@@ -404,8 +409,8 @@ function renderProjectFeatures(proj: Project): void {
     activeProjectFeatureListElem.replaceChildren(table);
 }
 
-function renderAllProjects() {
-    const projects = globalProjectRepository.queryAll();
+async function renderAllProjects() {
+    const projects = await globalProjectRepository.queryAll();
     const projectsElements = projects.map(projectToElem);
     projectListElem.replaceChildren(...projectsElements);
 }

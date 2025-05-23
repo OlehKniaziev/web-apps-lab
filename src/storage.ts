@@ -1,13 +1,15 @@
+const BACKEND_URL = "http://localhost:5959";
+
 export type Project = {
-    id: string;
-    name: string;
-    description: string;
+    Id: string;
+    Name: string;
+    Description: string;
 };
 
 export type ProjectUpdateParams = {
-    oldName: string;
-    newName?: string | undefined;
-    description?: string | undefined;
+    Id: string;
+    Name?: string | undefined;
+    Description?: string | undefined;
 };
 
 type ProjectEventSelector = {
@@ -18,9 +20,9 @@ type ProjectEventHook = (proj: Project) => void;
 
 interface ProjectRepository {
     createWithRandomID(name: string, description: string): Project;
-    queryAll(): Project[];
-    queryByName(name: string): Project | null;
-    queryByID(id: string): Project | null;
+    queryAll(): Promise<Project[]>;
+    queryByName(name: string): Promise<Project | null>;
+    queryByID(id: string): Promise<Project | null>;
     deleteByName(name: string): void;
     deleteByID(id: string): void;
     update(params: ProjectUpdateParams): void;
@@ -29,79 +31,16 @@ interface ProjectRepository {
     attachEventHook(selector: ProjectEventSelector, hook: ProjectEventHook): void;
 }
 
-type ProjectRepositoryMutator = {
-    setActiveProject(proj: Project): void;
-    addProject(proj: Project): void;
-    removeProject(projectID: string): void;
-};
-
-class ProjectRepositoryState {
-    private activeProject?: Project;
-    private projects: Project[] = [];
-
-    public constructor() {
-        const existingState = localStorage.getItem(ProjectRepositoryState.LOCAL_STORAGE_KEY);
-
-        if (!existingState) {
-            const thisString = JSON.stringify(this);
-            localStorage.setItem(ProjectRepositoryState.LOCAL_STORAGE_KEY, thisString);
-        } else {
-            const state = JSON.parse(existingState) as ProjectRepositoryState;
-            this.activeProject = state.activeProject;
-            this.projects = state.projects;
-        }
-    }
-
-    public modify(cb: (mutator: ProjectRepositoryMutator) => void): void {
-        const state = this;
-
-        const mutator: ProjectRepositoryMutator = {
-            setActiveProject(proj: Project): void {
-                state.activeProject = proj;
-            },
-            addProject(proj: Project): void {
-                state.projects.push(proj);
-            },
-            removeProject(projectID: string): void {
-                for (let i = 0; i < state.projects.length; ++i) {
-                    if (state.projects[i].id === projectID) {
-                        state.projects.splice(i, 1);
-                        return;
-                    }
-                }
-
-                throw new Error(`No project with id '${projectID}' found`);
-            },
-        };
-
-        cb(mutator);
-
-        const stateString = JSON.stringify(state);
-        localStorage.setItem(ProjectRepositoryState.LOCAL_STORAGE_KEY, stateString);
-    }
-
-    public queryAll(): Project[] {
-        return this.projects;
-    }
-
-    public getActive(): Project | undefined {
-        return this.activeProject;
-    }
-
-    private static LOCAL_STORAGE_KEY = "project-repository";
-
-}
-
 class LocalStorageProjectRepository implements ProjectRepository {
-    private state: ProjectRepositoryState = new ProjectRepositoryState();
+    private activeProject?: Project;
     private activeProjectChangedHooks: ProjectEventHook[] = [];
 
     public createWithRandomID(name: string, description: string): Project {
         const id = crypto.randomUUID();
         const proj: Project = {
-            id,
-            name,
-            description,
+            Id: id,
+            Name: name,
+            Description: description,
         };
 
         this.saveProject(proj);
@@ -109,20 +48,26 @@ class LocalStorageProjectRepository implements ProjectRepository {
         return proj;
     }
 
-    public queryAll(): Project[] {
-        return this.state.queryAll();
+    public async queryAll(): Promise<Project[]> {
+        const resp = await fetch(`${BACKEND_URL}/get-all-projects`);
+        const json = await resp.json();
+        // TODO(oleh): Validation.
+        return json as Project[];
     }
 
     public deleteByID(id: string): void {
-        this.state.modify((mutator) => mutator.removeProject(id));
+        fetch(`${BACKEND_URL}/delete-project`, {
+            method: "POST",
+            body: id,
+        });
     }
 
-    public deleteByName(name: string): void {
-        const projects = this.queryAll();
+    public async deleteByName(name: string): Promise<void> {
+        const projects = await this.queryAll();
 
         for (const project of projects) {
-            if (project.name === name) {
-                this.deleteByID(project.id);
+            if (project.Name === name) {
+                this.deleteByID(project.Id);
                 return;
             }
         }
@@ -130,48 +75,40 @@ class LocalStorageProjectRepository implements ProjectRepository {
         throw new Error(`No project with name '${name}' found`);
     }
 
-    public update({ oldName, newName, description }: ProjectUpdateParams ): void {
-        const proj = this.queryByName(oldName);
-        if (!proj) {
-            throw new Error(`Cannot find a project with name '${oldName}'`);
-        }
-
-        this.deleteByName(oldName);
-
-        if (newName !== undefined)     proj.name = newName;
-        if (description !== undefined) proj.description = description;
-
-        this.saveProject(proj);
+    public update(params: ProjectUpdateParams): void {
+        fetch(`${BACKEND_URL}/update-project`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
     }
 
-    public queryByName(name: string): Project | null {
-        const projects = this.queryAll();
+    public async queryByName(name: string): Promise<Project | null> {
+        const projects = await this.queryAll();
 
         for (const project of projects) {
-            if (project.name === name) return project;
+            if (project.Name === name) return project;
         }
 
         return null;
     }
 
-    public queryByID(id: string): Project | null {
-        const projects = this.queryAll();
+    public async queryByID(id: string): Promise<Project | null> {
+        const projects = await this.queryAll();
 
         for (const project of projects) {
-            if (project.id === id) return project;
+            if (project.Id === id) return project;
         }
 
         return null;
     }
 
     public setActive(project: Project): void {
-        this.state.modify((mutator) => mutator.setActiveProject(project));
-
+        this.activeProject = project;
         for (const hook of this.activeProjectChangedHooks) hook(project);
     }
 
     public getActive(): Project | undefined {
-        return this.state.getActive();
+        return this.activeProject;
     }
 
     public attachEventHook(selector: ProjectEventSelector, hook: ProjectEventHook): void {
@@ -183,7 +120,10 @@ class LocalStorageProjectRepository implements ProjectRepository {
     }
 
     private saveProject(proj: Project): void {
-        this.state.modify((mutator) => mutator.addProject(proj));
+        fetch(`${BACKEND_URL}/insert-project`, {
+            method: "POST",
+            body: JSON.stringify(proj),
+        });
     }
 }
 
@@ -334,7 +274,7 @@ export function createNewFeatureRightNow(
     return {
         id: crypto.randomUUID(),
         ownerID: owner.id,
-        projectID: project.id,
+        projectID: project.Id,
         state: "todo",
         name,
         description,
@@ -390,7 +330,7 @@ class FeatureRepositoryState {
     }
 
     public getProjectFeatures(proj: Project): Feature[] {
-        return this.features.filter((feat) => feat.projectID === proj.id);
+        return this.features.filter((feat) => feat.projectID === proj.Id);
     }
 }
 

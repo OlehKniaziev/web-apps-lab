@@ -241,7 +241,7 @@ void HttpServerStart(http_server *Server, u16 Port) {
             const char *VersionString = HttpVersionStrings[HttpRequest.Version];
 
             string_view ResponseString = ArenaFormat(&RequestArena,
-                                                     "%s %u %s\r\n\r\n" SV_FMT,
+                                                     "%s %u %s\r\nAccess-Control-Allow-Origin: *\r\n\r\n" SV_FMT,
                                                      VersionString,
                                                      ResponseStatus,
                                                      ReasonPhrase,
@@ -261,7 +261,7 @@ void HttpServerStart(http_server *Server, u16 Port) {
 
         // TODO(oleh): No handler found, just give em 404!
         string_view ResponseString = ArenaFormat(&RequestArena,
-                                                 "%s %u %s\r\n\r\n",
+                                                 "%s %u %s\r\nAccess-Control-Allow-Origin: *\r\n\r\n",
                                                  VersionString,
                                                  ResponseStatus,
                                                  ReasonPhrase);
