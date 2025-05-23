@@ -313,3 +313,99 @@ b32 JsonObjectGet_string_view(const json_object *Object, string_view Key, string
     *OutValue = JsonValue.String;
     return 1;
 }
+
+static arena *CurrentJsonArena;
+static uz CurrentJsonStart;
+static uz CurrentJsonCount;
+
+enum {
+    STATE_CLEAN,
+    STATE_DIRTY,
+} CurrentJsonState;
+
+void JsonBegin(arena *Arena) {
+    CurrentJsonArena = Arena;
+    CurrentJsonStart = Arena->Offset;
+    CurrentJsonState = STATE_CLEAN;
+}
+
+string_view JsonEnd(void) {
+    string_view Result = {.Items = CurrentJsonArena->Items + CurrentJsonStart, .Count = CurrentJsonCount};
+    CurrentJsonCount = 0;
+    CurrentJsonArena->Offset = AlignForward(CurrentJsonArena->Offset, sizeof(uz));
+    return Result;
+}
+
+void JsonBeginObject(void) {
+    ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= 1);
+    u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+    *Ptr = '{';
+    CurrentJsonArena->Offset += 1;
+    CurrentJsonState = STATE_CLEAN;
+}
+
+void JsonEndObject(void) {
+    ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= 1);
+    u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+    *Ptr = '}';
+    CurrentJsonArena->Offset += 1;
+    CurrentJsonState = STATE_DIRTY;
+}
+
+void JsonBeginArray(void) {
+    ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= 1);
+    u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+    *Ptr = '[';
+    CurrentJsonArena->Offset += 1;
+    CurrentJsonState = STATE_CLEAN;
+}
+
+void JsonEndArray(void) {
+    ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= 1);
+    u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+    *Ptr = ']';
+    CurrentJsonArena->Offset += 1;
+    CurrentJsonState = STATE_DIRTY;
+}
+
+void JsonPutKey(string_view Key) {
+    uz BytesRequired;
+
+    if (CurrentJsonState == STATE_CLEAN) {
+        BytesRequired = Key.Count + 3;
+
+        ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= BytesRequired);
+
+        u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+        *Ptr = '"';
+        memcpy(Ptr + 1, Key.Items, Key.Count);
+        Ptr[Key.Count + 1] = '"';
+        Ptr[Key.Count + 2] = ':';
+    } else {
+        BytesRequired = Key.Count + 4;
+
+        ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= BytesRequired);
+
+        u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+        *Ptr = ',';
+        Ptr[1] = '"';
+        memcpy(Ptr + 2, Key.Items, Key.Count);
+        Ptr[Key.Count + 2] = '"';
+        Ptr[Key.Count + 3] = ':';
+    }
+
+    CurrentJsonArena->Offset += BytesRequired;
+}
+
+void JsonPutString(string_view String) {
+    uz BytesRequired = String.Count + 2;
+    ASSERT(CurrentJsonArena->Capacity - CurrentJsonArena->Offset >= BytesRequired);
+
+    u8 *Ptr = CurrentJsonArena->Items + CurrentJsonArena->Offset;
+    Ptr[0] = '"';
+    memcpy(Ptr + 1, String.Items, String.Count);
+    Ptr[String.Count + 1] = '"';
+
+    CurrentJsonState = STATE_DIRTY;
+    CurrentJsonArena->Offset += BytesRequired;
+}

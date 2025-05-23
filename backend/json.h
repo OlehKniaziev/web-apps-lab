@@ -63,4 +63,23 @@ ENUM_JSON_GETTERS
 ENUM_JSON_GETTERS
 #undef X
 
+void JsonBegin(arena *);
+
+void JsonBeginObject(void);
+void JsonEndObject(void);
+
+void JsonBeginArray(void);
+void JsonEndArray(void);
+
+void JsonPutNumber(f64);
+void JsonPutString(string_view);
+
+void JsonPutTrue(void);
+void JsonPutFalse(void);
+void JsonPutNull(void);
+
+void JsonPutKey(string_view);
+
+string_view JsonEnd(void);
+
 #endif // JSON_H_
