@@ -146,6 +146,7 @@ HANDLER(InsertUserHandler) {
 }
 
 HANDLER(LoginUserHandler) {
+    printf("HANDLER\n");
     if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
 
     json_value JsonPayloadValue;
@@ -167,6 +168,20 @@ HANDLER(LoginUserHandler) {
           StringViewEqual(User.LastName, LastName) &&
           StringViewEqual(User.Password, Password))) return HTTP_STATUS_BAD_REQUEST;
 
+    JsonBegin(Context->Arena);
+    JsonBeginObject();
+
+#define X(Type, Name) \
+    JsonPutKey(SV_LIT(#Name)); \
+    JsonPut_##Type(User.Name);
+
+    DECLARE_USER_ENTITY
+#undef X
+
+    JsonEndObject();
+
+    string_view UserJson = JsonEnd();
+    Context->Content = UserJson;
     return HTTP_STATUS_OK;
 }
 

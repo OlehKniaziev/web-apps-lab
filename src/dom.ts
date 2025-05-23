@@ -83,6 +83,12 @@ function creationFormOnSubmit(ev: Event) {
 
     event.preventDefault();
 
+    const currentUser = globalUserRepository.getActive();
+    if (currentUser.Role === "guest") {
+        showErrorPopup("Not enough privileges to modify features");
+        return;
+    }
+
     const form = event.target as HTMLFormElement | undefined;
     if (!form) {
         throw new Error("The event target is null!");
@@ -131,10 +137,23 @@ async function updateFormOnSubmit(ev: Event) {
     globalProjectRepository.update(updateParams);
 }
 
+function showErrorPopup(text: string) {
+    const messageP = document.createElement("p");
+    messageP.classList.add("message-level-error");
+    messageP.textContent = text;
+    showPopup(messageP);
+}
+
 function newFeatureFormOnSubmit(ev: Event) {
     const event = ev as SubmitEvent;
 
     event.preventDefault();
+
+    const currentUser = globalUserRepository.getActive();
+    if (currentUser.Role === "guest") {
+        showErrorPopup("Not enough privileges to modify features");
+        return;
+    }
 
     const form = event.target as HTMLFormElement | undefined;
     if (!form) {
@@ -469,6 +488,9 @@ function showLoginFormPopup() {
     f("second-name", "Second name");
     f("password", "Password");
 
+    const googleLoginTemplate = querySelectorMust("#google-login");
+    const googleLogin = googleLoginTemplate.content.querySelectorAll("div");
+
     const submitButton = document.createElement("button");
     submitButton.textContent = "Login";
 
@@ -481,12 +503,11 @@ function showLoginFormPopup() {
         const secondName = getFormInputValue(loginForm, "second-name");
         const password = getFormInputValue(loginForm, "password");
         const success = await globalUserRepository.loginUser(firstName, secondName, password);
-        if (success) closeButton.click();
-        else {
-            const messageP = document.createElement("p");
-            messageP.classList.add("message-level-error");
-            messageP.textContent = "Invalid credentials.";
-            showPopup(messageP);
+        if (success) {
+            initState();
+            closeButton.click();
+        } else {
+            showErrorPopup("Invalid credentials.");
         }
     });
 
@@ -494,7 +515,7 @@ function showLoginFormPopup() {
 
     const breakElem = document.createElement("br");
 
-    loginForm.append(breakElem, submitButton);
+    loginForm.append(...googleLogin, breakElem, submitButton);
 }
 
 showLoginFormPopup();

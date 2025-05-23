@@ -29,7 +29,8 @@ typedef struct {
     X(string_view, Id) \
     X(string_view, FirstName) \
     X(string_view, LastName) \
-    X(string_view, Password)
+    X(string_view, Password) \
+    X(string_view, Role)
 
 typedef struct {
 #define X(Type, Name) Type Name;

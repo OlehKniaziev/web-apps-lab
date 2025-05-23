@@ -127,10 +127,13 @@ class LocalStorageProjectRepository implements ProjectRepository {
     }
 }
 
+export type UserRole = "guest" | "admin" | "devops" | "developer";
+
 export type User = Readonly<{
     Id: string;
     FirstName: string;
     LastName: string;
+    Role: UserRole;
 }>;
 
 export type UserEventSelector = {
@@ -186,7 +189,12 @@ class LocalStorageUserRepository implements UserRepository {
             method: "POST",
             body: `{"FirstName": "${firstName}", "LastName": "${lastName}", "Password": "${password}"}`
         });
-        return res.ok;
+        if (!res.ok) return false;
+
+        const json = await res.json();
+        const user = json as User;
+        this.setActiveUser(user);
+        return true;
     }
 }
 

@@ -1,4 +1,3 @@
-import { initState, setupEventListeners } from "./dom.ts";
+import { setupEventListeners } from "./dom.ts";
 
-initState();
 setupEventListeners();
