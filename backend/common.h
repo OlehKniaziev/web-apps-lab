@@ -61,6 +61,7 @@ typedef float f32;
 typedef double f64;
 
 typedef size_t uz;
+typedef ssize_t sz;
 
 typedef struct {
     u8 *Items;
@@ -90,6 +91,7 @@ static inline b32 StringViewEqual(string_view Lhs, string_view Rhs) {
 
 typedef struct {
     u8 *Items;
+    void *LastAlloc;
     uz Capacity;
     uz Offset;
 } arena;
@@ -105,6 +107,7 @@ static inline void *ArenaPush(arena *Arena, uz Size) {
 
     void *Ptr = Arena->Items + Arena->Offset;
     Arena->Offset += Size;
+    Arena->LastAlloc = Ptr;
     return Ptr;
 }
 
@@ -114,6 +117,7 @@ static inline void ArenaInit(arena *Arena, uz Capacity) {
     Arena->Capacity = Capacity;
     Arena->Offset = 0;
     Arena->Items = (u8 *)calloc(Capacity, sizeof(u8));
+    Arena->LastAlloc = NULL;
 }
 
 static inline string_view ArenaFormat(arena *Arena, const char *Fmt, ...) {
@@ -132,8 +136,12 @@ static inline string_view ArenaFormat(arena *Arena, const char *Fmt, ...) {
 }
 
 static inline void *ArenaRealloc(arena *Arena, void *OldPtr, uz OldSize, uz NewSize) {
-    // TODO(oleh): Check if the last allocation's start is the Ptr, if so, just
-    // extend it.
+    if (Arena->LastAlloc == OldPtr) {
+        OldSize = AlignForward(OldSize, sizeof(uz));
+        NewSize = AlignForward(NewSize, sizeof(uz));
+        sz Diff = (sz)NewSize - (sz)OldSize;
+        Arena->Offset += Diff;
+    }
     void* NewPtr = ArenaPush(Arena, NewSize);
     memcpy(NewPtr, OldPtr, OldSize);
     return NewPtr;
