@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 
 #include "http.h"
 #include "db.h"
@@ -146,7 +147,6 @@ HANDLER(InsertUserHandler) {
 }
 
 HANDLER(LoginUserHandler) {
-    printf("HANDLER\n");
     if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
 
     json_value JsonPayloadValue;
@@ -185,7 +185,48 @@ HANDLER(LoginUserHandler) {
     return HTTP_STATUS_OK;
 }
 
+HANDLER(RegisterUserHandler) {
+    if (Context->Request.Method != HTTP_POST) return HTTP_STATUS_METHOD_NOT_ALLOWED;
+
+    json_value JsonPayloadValue;
+    if (!JsonParse(Context->Arena, Context->Request.Body, &JsonPayloadValue)) return HTTP_STATUS_BAD_REQUEST;
+    if (JsonPayloadValue.Type != JSON_OBJECT) return HTTP_STATUS_BAD_REQUEST;
+
+    json_object JsonPayload = JsonPayloadValue.Object;
+
+    string_view FirstName, LastName, Password, Role;
+
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("FirstName"), &FirstName)) return HTTP_STATUS_BAD_REQUEST;
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("LastName"), &LastName)) return HTTP_STATUS_BAD_REQUEST;
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("Password"), &Password)) return HTTP_STATUS_BAD_REQUEST;
+    if (!JsonObjectGet_string_view(&JsonPayload, SV_LIT("Role"), &Role)) return HTTP_STATUS_BAD_REQUEST;
+
+    user_entity DuplicateUser;
+    if (DbGetUserByLogin(Context->Arena, FirstName, LastName, &DuplicateUser)) return HTTP_STATUS_BAD_REQUEST;
+
+    user_entity User = CreateUserWithRandomId(Context->Arena, FirstName, LastName, Password, Role);
+    if (!DbInsertUser(&User)) return HTTP_STATUS_NOT_FOUND;
+
+    JsonBegin(Context->Arena);
+    JsonBeginObject();
+
+#define X(Type, Name) \
+    JsonPutKey(SV_LIT(#Name)); \
+    JsonPut_##Type(User.Name);
+
+DECLARE_USER_ENTITY
+#undef X
+
+JsonEndObject();
+
+    string_view UserJson = JsonEnd();
+    Context->Content = UserJson;
+    return HTTP_STATUS_OK;
+}
+
 int main() {
+    srand(time(NULL));
+
     arena *TempArena = GetTempArena();
 
     string_view EnvFileContents;
@@ -235,6 +276,7 @@ int main() {
 
     HttpServerAttachHandler(&Server, "/insert-user", InsertUserHandler);
     HttpServerAttachHandler(&Server, "/login-user", LoginUserHandler);
+    HttpServerAttachHandler(&Server, "/register-user", RegisterUserHandler);
 
     printf("Starting the server on port %u\n", ServerPort);
     HttpServerStart(&Server, ServerPort);

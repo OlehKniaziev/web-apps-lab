@@ -13,6 +13,7 @@ type DynamicElement = {
 
 let authFirstNameInput: HTMLInputElement | null = null;
 let authLastNameInput: HTMLInputElement | null = null;
+let authRoleInput: HTMLInputElement | null = null;
 
 export function authGetFirstNameInput(): HTMLInputElement {
     if (authFirstNameInput === null) throw new Error("Input is null");
@@ -22,6 +23,11 @@ export function authGetFirstNameInput(): HTMLInputElement {
 export function authGetLastNameInput(): HTMLInputElement {
     if (authLastNameInput === null) throw new Error("Input is null");
     return authLastNameInput;
+}
+
+export function authGetRoleInput(): HTMLInputElement {
+    if (authRoleInput === null) throw new Error("Input is null");
+    return authRoleInput;
 }
 
 const mainHeader = querySelectorMust("#main-header");
@@ -490,30 +496,35 @@ export function setupEventListeners() {
 function showLoginFormPopup() {
     const loginForm = document.createElement("form");
 
-    const f = (name: string, desc: string) => {
+    const f = (name: string, desc: string, hidden: boolean = false) => {
         const input = document.createElement("input");
         input.name = name;
         input.id = name;
         input.placeholder = desc;
+        input.style.display = hidden ? "none" : "inline";
         loginForm.appendChild(input);
     };
 
     f("first-name", "First name");
     f("last-name", "Last name");
     f("password", "Password");
+    f("role", "Role", true);
 
     authFirstNameInput = loginForm.querySelector("#first-name");
     authLastNameInput = loginForm.querySelector("#last-name");
+    authRoleInput = loginForm.querySelector("#role");
+
+    authRoleInput!.value = "developer";
 
     const googleLoginTemplate = querySelectorMust<HTMLTemplateElement>("#google-login");
     const googleLogin = googleLoginTemplate.content.querySelectorAll("div");
 
-    const submitButton = document.createElement("button");
-    submitButton.textContent = "Login";
+    const loginButton = document.createElement("button");
+    loginButton.textContent = "Login";
 
     const closeButton = showPopup(loginForm);
 
-    submitButton.addEventListener("click", async (e) => {
+    loginButton.addEventListener("click", async (e) => {
         e.preventDefault();
 
         const firstName = getFormInputValue(loginForm, "first-name");
@@ -528,11 +539,35 @@ function showLoginFormPopup() {
         }
     });
 
+    const registerButton = document.createElement("button");
+    registerButton.textContent = "Register";
+
+    registerButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+
+        const firstName = getFormInputValue(loginForm, "first-name");
+        const lastName = getFormInputValue(loginForm, "last-name");
+        const password = getFormInputValue(loginForm, "password");
+        const role = getFormInputValue(loginForm, "role");
+
+        if (!(role === "guest" || role === "admin" || role === "devops" || role === "developer")) {
+            throw new Error(`Invalid role "${role}"`);
+        }
+
+        const success = await globalUserRepository.registerAndLoginUser(firstName, lastName, password, role);
+        if (success) {
+            initState();
+            closeButton.click();
+        } else {
+            showErrorPopup("User with such credentials already exists.");
+        }
+    });
+
     closeButton.style.display = "none";
 
     const breakElem = document.createElement("br");
 
-    loginForm.append(...googleLogin, breakElem, submitButton);
+    loginForm.append(...googleLogin, breakElem, loginButton, registerButton);
 }
 
 showLoginFormPopup();

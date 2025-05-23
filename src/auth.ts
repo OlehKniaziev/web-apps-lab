@@ -1,12 +1,14 @@
-import { authGetFirstNameInput, authGetLastNameInput } from "./dom.ts";
+import { authGetFirstNameInput, authGetLastNameInput, authGetRoleInput } from "./dom.ts";
 
 export async function googleLetMeIn(data: any) {
     const { given_name: firstName, family_name: lastName } = parseJwt(data.credential);
     const firstNameInput = authGetFirstNameInput();
     const lastNameInput = authGetLastNameInput();
+    const roleInput = authGetRoleInput();
 
     firstNameInput.value = firstName;
     lastNameInput.value = lastName;
+    roleInput.value = "guest";
 }
 
 function parseJwt(token: string) {

@@ -298,3 +298,28 @@ bson_t *Document = bcon_new(NULL,
     bson_destroy(Document);
     return Result;
 }
+
+user_entity CreateUserWithRandomId(arena *Arena,
+                                   string_view FirstName,
+                                   string_view LastName,
+                                   string_view Password,
+                                   string_view Role) {
+    u32 Entropy = rand();
+
+    u8 *IdBuffer = ArenaPush(Arena, 8);
+
+    for (uz I = 0; I < 8; ++I) {
+        u8 Bits = Entropy & (0x0F << (I * 4));
+        IdBuffer[I] = 'a' + Bits;
+    }
+
+    string_view Id = {.Items = IdBuffer, .Count = 8};
+
+    return (user_entity) {
+        .Id = Id,
+        .FirstName = FirstName,
+        .LastName = LastName,
+        .Password = Password,
+        .Role = Role,
+    };
+}

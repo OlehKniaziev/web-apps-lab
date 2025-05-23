@@ -86,4 +86,10 @@ b32 DbGetFeatureById(string_view, feature_entity *);
 b32 DbUpdateFeature(feature_entity * /* TODO(oleh): Additional arguments. */);
 b32 DbDeleteFeature(feature_entity *);
 
+user_entity CreateUserWithRandomId(arena *Arena,
+                                   string_view FirstName,
+                                   string_view LastName,
+                                   string_view Password,
+                                   string_view Role);
+
 #endif // DB_H_

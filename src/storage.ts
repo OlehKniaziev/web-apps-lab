@@ -148,6 +148,7 @@ interface UserRepository {
     setActiveUser(user: User): void;
     attachEventHook(selector: UserEventSelector, hook: UserEventHook): void;
     loginUser(firstName: string, lastName: string, password: string): Promise<boolean>;
+    registerAndLoginUser(firstName: string, lastName: string, password: string, role: UserRole): Promise<boolean>;
 }
 
 class LocalStorageUserRepository implements UserRepository {
@@ -187,7 +188,20 @@ class LocalStorageUserRepository implements UserRepository {
     public async loginUser(firstName: string, lastName: string, password: string): Promise<boolean> {
         const res = await fetch(`${BACKEND_URL}/login-user`, {
             method: "POST",
-            body: `{"FirstName": "${firstName}", "LastName": "${lastName}", "Password": "${password}"}`
+            body: `{"FirstName": "${firstName}", "LastName": "${lastName}", "Password": "${password}"}`,
+        });
+        if (!res.ok) return false;
+
+        const json = await res.json();
+        const user = json as User;
+        this.setActiveUser(user);
+        return true;
+    }
+
+    public async registerAndLoginUser(firstName: string, lastName: string, password: string, role: UserRole): Promise<boolean> {
+        const res = await fetch(`${BACKEND_URL}/register-user`, {
+            method: "POST",
+            body: `{"FirstName": "${firstName}", "LastName": "${lastName}", "Password": "${password}", "Role": "${role}"}`,
         });
         if (!res.ok) return false;
 
